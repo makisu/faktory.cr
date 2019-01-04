@@ -55,7 +55,7 @@ module Faktory
     # The job registry is populated at compile-time.
     REGISTRY = {} of String => Proc(JSON::Any, Faktory::Job)
 
-    TIME_FORMAT_STRING = "%FT%T%:z"
+    TIME_FORMAT_STRING = "%FT%T.%NZ"
 
     # job ID
     @jid          : String
@@ -251,8 +251,8 @@ module Faktory
         protected def self.deserialize(payload : JSON::Any) : \{{@type}}
           jid = payload["jid"].as_s
           args_tuple = ARGS_TYPE_TUPLE.from_json(payload["args"].as_a.to_json)
-          created_at = Time.parse(payload["created_at"].as_s, TIME_FORMAT_STRING).to_utc
-          enqueued_at = Time.parse(payload["enqueued_at"].as_s, TIME_FORMAT_STRING).to_utc
+          created_at = Time.parse_utc(payload["created_at"].as_s, TIME_FORMAT_STRING)
+          enqueued_at = Time.parse_utc(payload["enqueued_at"].as_s, TIME_FORMAT_STRING)
           \{{@type}}.new(*args_tuple, jid: jid, created_at: created_at, enqueued_at: enqueued_at)
         end
 
