@@ -138,6 +138,7 @@ module Faktory
       rescue e
         @consumer.fail(job.jid, e)
       end
+      GC.collect # AKN: added manual GC run, memory usage was out of control
     end
 
   end
