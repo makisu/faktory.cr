@@ -25,12 +25,12 @@ module Faktory
     # https://stackoverflow.com/questions/42299037/
     private def hex_decode(hex : String) : Slice(UInt8)
       if hex.size.even?
-        slice = Slice(UInt8).new(hex.size / 2)
+        slice = Slice(UInt8).new(hex.size // 2)
         0.step(to: hex.size - 1, by: 2) do |i|
           high_nibble = hex.to_unsafe[i].unsafe_chr.to_u8?(16)
           low_nibble = hex.to_unsafe[i + 1].unsafe_chr.to_u8?(16)
           if high_nibble && low_nibble
-            slice[i / 2] = (high_nibble << 4) | low_nibble
+            slice[i // 2] = (high_nibble << 4) | low_nibble
           else
             raise "InvalidHex"
           end
