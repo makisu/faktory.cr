@@ -7,3 +7,6 @@ authors:
 crystal: 0.31.0
 
 license: MIT
+
+raven:
+  github: Sija/raven.cr

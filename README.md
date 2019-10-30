@@ -12,11 +12,30 @@ Heads up - this is still a work in progress. Basic functionality is working well
 - [x] Powerful configuration options
 - [x] Logging
 
- but there are still some things missing:
+but there are still some things missing:
 
 - [ ] TLS Support
 - [ ] Middleware/Plugin Infrastructure
 - [ ] Tests
+
+## Multithreaded Job Processing
+
+To run each job in its own fiber:
+
+1. Select a reasonable concurrency level (given the kinds of jobs you run and the available resources available):
+
+  ```crystal
+  worker = Faktory::Worker.new
+  worker.run do |options|
+    options.concurrency(4)
+  end
+  ```
+
+2. Compile with `-Dpreview_mt`.
+
+3. At runtime, set `CRYSTAL_WORKERS` env var to something greater than 1. Keep in mind that jobs can also spawn their own fibers.
+
+When running this version, you'll either need to use Sentry (set SENTRY_DSN env var) or watch your logs for errors. There is a `rescue` in there now that keeps a crashing job from taking others down with it.
 
 ## Installation
 
@@ -26,7 +45,7 @@ application's shard.yml:
 ```yaml
 dependencies:
   faktory_worker:
-    github: calebuharrison/faktory.cr
+    github: anamba/faktory.cr
 ```
 
 and run:
