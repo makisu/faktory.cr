@@ -69,14 +69,12 @@ module Faktory
       @concurrency.times do
         spawn do
           until terminated?
-            job = nil
+            heartbeat
             if quieted?
               sleep 0.5
-            else
-              job = fetch
+            elsif (job = fetch)
+              process(job)
             end
-            process(job.as(Job)) if job
-            @consumer_mutex.synchronize { heartbeat if should_heartbeat? }
           end
         rescue ex : Exception
           puts "Worker crashed! Will restart in 15 seconds."
@@ -114,13 +112,17 @@ module Faktory
     end
 
     private def heartbeat
-      response = @consumer_mutex.synchronize { @consumer.beat }
-      if response
-        state = response.as(String)
-        @quiet = true
-        @terminate = true if state == "terminate"
+      @consumer_mutex.synchronize do
+        if should_heartbeat?
+          response = @consumer.beat
+          if response
+            state = response.as(String)
+            @quiet = true
+            @terminate = true if state == "terminate"
+          end
+          @last_heartbeat = Time.utc
+        end
       end
-      @last_heartbeat = Time.utc
     end
 
     private def quieted? : Bool
@@ -135,7 +137,7 @@ module Faktory
       @shuffle
     end
 
-    private def fetch : Job | Nil
+    private def fetch : Job?
       @queues = @queues.shuffle if shuffle?
       job_payload = @consumer_mutex.synchronize { @consumer.fetch(@queues) }
       if job_payload
