@@ -9,12 +9,15 @@ module Faktory
     @location : URI
     @labels : Array(String)
     @socket : TCPSocket
+    @mutex : Mutex = Mutex.new
 
     def initialize
       Faktory.log.debug("Initializing client connection...")
       @location = URI.parse(Faktory.url)
       @labels = ["crystal-#{Crystal::VERSION}"]
-      @socket = TCPSocket.new(@location.host.as(String), @location.port.as(Int32))
+
+      @socket = create_socket
+
       perform_initial_handshake
       Faktory.log.debug("Client successfully connected to Faktory server at #{@location}")
     end
@@ -63,8 +66,10 @@ module Faktory
 
     def flush
       retry_if_necessary do
-        send_command("FLUSH")
-        verify_ok
+        @mutex.synchronize {
+          send_command("FLUSH")
+          verify_ok
+        }
       end
       Faktory.log.info("Flushed Faktory server dataset")
     end
@@ -82,13 +87,21 @@ module Faktory
       @location.scheme.includes?("tls")
     end
 
+    private def create_socket
+      # NOTE: all socket timeouts in seconds (int or float ok)
+      socket = TCPSocket.new(@location.host.as(String), @location.port.as(Int32), dns_timeout: 5, connect_timeout: 5)
+      socket.read_timeout = 5
+      socket.write_timeout = 5
+      socket
+    end
+
     private def renew_socket
-      Faktory.log.debug("Renewing socket...")
-      @socket = TCPSocket.new(@location.host.as(String), @location.port.as(Int32))
+      Faktory.log.info("Renewing socket...")
+      @socket = create_socket
     end
 
     private def perform_initial_handshake
-      hi = get_server_response
+      hi = @mutex.synchronize { get_server_response }
       password_hash = nil
       if hi
         if hi.as(String) =~ /\AHI (.*)/
@@ -120,8 +133,11 @@ module Faktory
           end
         end
         handshake_payload_string = handshake_payload.merge({:pwdhash => password_hash}).to_json
-        send_command("HELLO", handshake_payload_string)
-        verify_ok
+
+        @mutex.synchronize {
+          send_command("HELLO", handshake_payload_string)
+          verify_ok
+        }
       else
         Faktory.log.fatal("Server did not say HI")
         raise "NoServerResponse"
@@ -131,13 +147,15 @@ module Faktory
     def info : String
       info_string = "{}"
       retry_if_necessary do
-        send_command("INFO")
-        if response = get_server_response
-          info_string = response
-        else
-          Faktory.log.fatal("Server did not return info upon request")
-          raise "NoServerResponse"
-        end
+        @mutex.synchronize {
+          send_command("INFO")
+          if response = get_server_response
+            info_string = response
+          else
+            Faktory.log.fatal("Server did not return info upon request")
+            raise "NoServerResponse"
+          end
+        }
       end
 
       info_string

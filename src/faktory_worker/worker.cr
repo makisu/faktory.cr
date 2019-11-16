@@ -139,7 +139,7 @@ module Faktory
 
     private def fetch : Job?
       @queues = @queues.shuffle if shuffle?
-      job_payload = @consumer_mutex.synchronize { @consumer.fetch(@queues) }
+      job_payload = @consumer.fetch(@queues)
       if job_payload
         Job.deserialize(job_payload.as(JSON::Any))
       else
@@ -151,9 +151,9 @@ module Faktory
       Faktory.log.info("START " + job.jid)
       begin
         job.perform
-        @consumer_mutex.synchronize { @consumer.ack(job.jid) }
+        @consumer.ack(job.jid)
       rescue e
-        @consumer_mutex.synchronize { @consumer.fail(job.jid, e) }
+        @consumer.fail(job.jid, e)
       end
       GC.collect # AKN: added manual GC run, memory usage was out of control
     end
