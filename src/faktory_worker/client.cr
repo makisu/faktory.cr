@@ -2,7 +2,7 @@ require "uri"
 require "socket"
 require "random"
 require "json"
-require "openssl"
+require "digest"
 
 module Faktory
   abstract class Client
@@ -44,15 +44,16 @@ module Faktory
     end
 
     def hash_it_up(n : Int32, password : String, salt : String) : String
-      hash = OpenSSL::Digest.new("SHA256").update(password + salt)
-      data = hex_decode(hash.hexdigest)
+      hash = Digest::SHA256.new
+      hash.update(password + salt)
+      data = hash.dup.final
       (n - 1).times do |i|
         hash.reset
         hash.update(data)
         if i == (n - 2)
-          data = hash.hexdigest
+          data = hash.dup.final.hexstring
         else
-          data = hash.digest
+          data = hash.dup.final
         end
       end
       data.as(String)

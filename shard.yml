@@ -4,9 +4,12 @@ version: 0.1.0
 authors:
   - Caleb Uriah Harrison <calebuharrison@gmail.com>
 
-crystal: 0.31.0
+crystal: 0.36.0
 
 license: MIT
 
-raven:
-  github: Sija/raven.cr
+dependencies:
+  logger:
+    github: crystal-lang/logger.cr
+  raven:
+    github: Sija/raven.cr
